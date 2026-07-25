@@ -20,7 +20,7 @@ Each hierarchy is provided as a separate graph because each one is evaluated on 
 
 The graphs are in RDF/Turtle and the geometry uses GeoSPARQL (`geo:asWKT`). The model vocabulary uses the namespace:
 
-&#x20;   @prefix qpm: <http://qpm.ontology/2025#> .
+&#x20;   @prefix qpm: <http://qpm.ontology/2025# > .
 
 
 The graphs are provided gzip-compressed (`.ttl.gz`) and should be decompressed before use, or loaded with a tool that reads gzipped Turtle directly.
