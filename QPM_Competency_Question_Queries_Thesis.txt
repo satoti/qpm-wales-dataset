@@ -1,0 +1,1111 @@
+############################################################
+# Competency Question queries - QPM thesis
+#
+# These are the SPARQL queries behind the competency-question evaluation
+# reported in the thesis. Each one below was
+# run manually against the deposited dataset and produced the result
+# quoted in the thesis. Where a query needs the full Wales place dataset graph
+# rather than the cross-hierarchy graph, this is noted next to
+# the query.
+#
+# Two files are referred to below:
+#   QPM_CrossHierarchy_Evaluation_Graph.ttl  - the cross-hierarchy graph
+#   QPM_Wales_Places_DataSet.ttl             - the full Wales place graph
+#
+# NOTE: Each Competency Question (CQ) block below is written to be 
+# completely self-contained. You can execute this entire file top-to-bottom, 
+# or safely copy and paste individual CQ blocks into your own IDE or Python 
+# console to test them independently.
+############################################################
+
+
+
+# CQ1.1
+# Full profile of a place - type, function, geometry, containing units, and its four directional neighbours. Using Saint David's Centre here since I use it as my running example throughout the appendix.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq1_1 = r"""
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+
+SELECT ?place ?placeName ?place_type ?place_function ?mainGeom
+       (GROUP_CONCAT(DISTINCT ?unit_name;  separator=", ") AS ?units)
+       (GROUP_CONCAT(DISTINCT ?east_name;  separator=", ") AS ?eastOf)
+       (GROUP_CONCAT(DISTINCT ?west_name;  separator=", ") AS ?westOf)
+       (GROUP_CONCAT(DISTINCT ?north_name; separator=", ") AS ?northOf)
+       (GROUP_CONCAT(DISTINCT ?south_name; separator=", ") AS ?southOf)
+WHERE {
+  ?place a qpm:Place ;
+         qpm:place_name ?placeName ;
+         qpm:place_type ?place_type ;
+         qpm:place_function ?place_function .
+  FILTER(STR(?placeName) = "Saint David's Centre")
+
+  OPTIONAL {
+    ?place qpm:hasMainGeometry ?g .
+    ?g geo:asWKT ?mainGeom .
+  }
+
+  OPTIONAL {
+    ?place qpm:contained_by_unit ?u .
+    ?u qpm:unit_name ?unit_name .
+  }
+
+  OPTIONAL {
+    ?place qpm:east_of ?e .
+    ?e qpm:place_name ?east_name .
+  }
+
+  OPTIONAL {
+    ?place qpm:west_of ?w .
+    ?w qpm:place_name ?west_name .
+  }
+
+  OPTIONAL {
+    ?place qpm:north_of ?n .
+    ?n qpm:place_name ?north_name .
+  }
+
+  OPTIONAL {
+    ?place qpm:south_of ?s .
+    ?s qpm:place_name ?south_name .
+  }
+}
+GROUP BY ?place ?placeName ?place_type ?place_function ?mainGeom
+"""
+
+
+
+results = g.query(query_cq1_1)
+
+
+for row in results:
+    print(row)
+
+
+exit()
+
+
+# CQ1.2
+# Same idea as CQ1.1 but for a unit instead of a place - Castle ward's id, type, level, hierarchy, geometry, what places it contains and its neighbouring units.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq1_2 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+
+SELECT ?unit ?unitName ?unit_id ?unit_type ?unit_level ?hierarchy 
+       ?mainGeom ?extraGeom ?containedBy
+       (GROUP_CONCAT(DISTINCT ?placeName; separator=", ") AS ?containsPlaces)
+       (GROUP_CONCAT(DISTINCT ?eastName; separator=", ") AS ?eastOf)
+       (GROUP_CONCAT(DISTINCT ?westName; separator=", ") AS ?westOf)
+       (GROUP_CONCAT(DISTINCT ?northName; separator=", ") AS ?northOf)
+       (GROUP_CONCAT(DISTINCT ?southName; separator=", ") AS ?southOf)
+WHERE {
+  ?unit 
+        a qpm:Unit ;
+        qpm:unit_name ?unitName ;
+        qpm:spatial_unit_id ?unit_id ;
+        qpm:unit_type ?unit_type ;
+        qpm:unit_level ?unit_level ;
+        qpm:belongs_to_hierarchy ?hierarchy .
+  FILTER(LCASE(STR(?unitName)) = "castle")
+
+  OPTIONAL {
+    ?unit qpm:hasMainGeometry ?mg .
+    ?mg geo:asWKT ?mainGeom .
+  }
+  OPTIONAL {
+    ?unit qpm:hasExtraGeometry ?eg .
+    ?eg geo:asWKT ?extraGeom .
+  }
+  OPTIONAL {
+    ?unit qpm:contained_by ?parentUnit .
+    OPTIONAL { ?parentUnit qpm:unit_name ?parentName.
+    }
+  }
+  BIND(COALESCE(?parentName, "") AS ?containedBy)
+
+  OPTIONAL {
+    ?place qpm:contained_by_unit ?unit .
+    OPTIONAL { ?place qpm:place_name ?rawPlaceName. }
+  }
+  BIND(COALESCE(?rawPlaceName, "") AS ?placeName)
+
+  OPTIONAL {
+    ?unit qpm:east_of ?e .
+    OPTIONAL { ?e qpm:unit_name ?rawEastName. }
+  }
+  BIND(COALESCE(?rawEastName, "") AS ?eastName)
+
+  OPTIONAL {
+    ?unit qpm:west_of ?w .
+    OPTIONAL { ?w qpm:unit_name ?rawWestName. }
+  }
+  BIND(COALESCE(?rawWestName, "") AS ?westName)
+
+  OPTIONAL {
+    ?unit qpm:north_of ?n .
+    OPTIONAL { ?n qpm:unit_name ?rawNorthName. }
+  }
+  BIND(COALESCE(?rawNorthName, "") AS ?northName)
+
+  OPTIONAL {
+    ?unit qpm:south_of ?s .
+    OPTIONAL { ?s qpm:unit_name ?rawSouthName. }
+  }
+  BIND(COALESCE(?rawSouthName, "") AS ?southName)
+}
+GROUP BY ?unit ?unitName ?unit_id ?unit_type ?unit_level ?hierarchy 
+         ?mainGeom ?extraGeom ?containedBy
+"""
+
+results = g.query(query_cq1_2)
+
+
+
+count = 0
+for row in results:
+    print(row)
+    count += 1
+
+print(f"Total results: {count}")
+
+exit()
+
+
+# CQ1.3
+# Walking up the containment chain from a unit (unit_182, Castle) to see every ancestor unit above it, ordered by level.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq1_3 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?ancestor ?ancestor_id ?ancestor_name ?ancestor_level
+WHERE {
+  <http://qpm.ontology/2025#unit_182> (qpm:contained_by)+ ?ancestor .
+  OPTIONAL { ?ancestor qpm:spatial_unit_id ?ancestor_id . }
+  OPTIONAL { ?ancestor qpm:unit_name ?ancestor_name .
+  }
+  OPTIONAL { ?ancestor qpm:unit_level ?ancestor_level . }
+}
+ORDER BY ?ancestor_level
+"""
+
+# Execute the query
+results = g.query(query_cq1_3)
+
+# Print the results
+count = 0
+for row in results:
+    print(row)
+    count += 1
+
+print(f"Total results: {count}")
+
+exit()
+
+
+# CQ1.4
+# Quick lookup of the unit type for Cardiff CF52 - just confirming it comes back as a postal unit.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+
+SELECT ?unit ?unitType
+WHERE {
+  ?unit a qpm:Unit ;
+        qpm:unit_name ?name ;
+        qpm:unit_type ?unitType .
+  FILTER(str(?name) = "Cardiff CF52")
+}
+"""
+
+
+
+results = g.query(query)
+
+
+count = 0
+for row in results:
+    print(row)
+    count += 1
+
+print(f"Total results: {count}")
+
+
+exit()
+
+
+# CQ1.5
+# Checking that Cardiff CF52 has both its main and extra geometry stored correctly.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq1_5 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?mainGeom ?extraGeom
+WHERE {
+  ?unit a qpm:Unit ;
+        qpm:unit_name "Cardiff CF52"^^xsd:string .
+  OPTIONAL { ?unit qpm:hasMainGeometry ?mainGeom . }
+  OPTIONAL { ?unit qpm:hasExtraGeometry ?extraGeom .
+  }
+}
+"""
+
+# Execute the query
+results = g.query(query_cq1_5)
+
+# Print the results
+count = 0
+for row in results:
+    print(row)
+    count += 1
+
+print(f"Total results: {count}")
+
+
+# CQ2.1
+# All the spatial relationships stored for unit_0, to check the reified SpatialRelationship pattern is queryable end to end.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq2_1 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+
+SELECT ?relationType ?targetUnit ?targetUnitName
+WHERE {
+  ?spRel a qpm:SpatialRelationship ;
+         qpm:relationshipType ?relationType ;
+         qpm:sourceUnit <http://qpm.ontology/2025#unit_0> ;
+         qpm:targetUnit ?targetUnit .
+  ?targetUnit qpm:unit_name ?targetUnitName .
+}
+"""
+
+# Execute the query
+results = g.query(query_cq2_1)
+
+# Print the results
+count = 0
+for row in results:
+    print(row)
+    count += 1
+
+print(f"Total results: {count}")
+
+
+# CQ2.2
+# Which units are directly east of the Cardiff unitary authority boundary (Caerdydd - Cardiff).
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq2_2 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?u ?uName
+WHERE {
+    ?center a qpm:Unit ;
+            qpm:unit_name "Caerdydd - Cardiff"^^xsd:string .
+    ?u a qpm:Unit ;
+       qpm:unit_name ?uName ;
+       qpm:east_of ?center .
+}
+"""
+
+# Execute the query
+results = g.query(query_cq2_2)
+
+# Print the results
+count = 0
+for row in results:
+    print(row)
+    count += 1
+
+print(f"Total results: {count}")
+
+
+# CQ2.3
+# Same question as CQ2.2 but at place level - what places are east of Saint David's Centre.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq2_3 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?place ?placeName
+WHERE {
+    ?center a qpm:Place ;
+            qpm:place_name "Saint David's Centre"^^xsd:string .
+    ?place a qpm:Place ;
+           qpm:place_name ?placeName ;
+           qpm:east_of ?center .
+}
+"""
+
+# Execute the query
+results = g.query(query_cq2_3)
+
+# Print the results
+count = 0
+for row in results:
+    print(row.placeName)
+    count += 1
+
+print(f"Total results: {count}")
+
+
+# CQ2.4
+# What relationship type is actually recorded between Cardiff CF52 and Gabalfa.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq2_4 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT DISTINCT ?relationType
+WHERE {
+  ?spRel a qpm:SpatialRelationship ;
+         qpm:relationshipType ?relationType ;
+         qpm:sourceUnit ?sourceUnit ;
+         qpm:targetUnit ?targetUnit .
+  ?sourceUnit qpm:unit_name "Cardiff CF52"^^xsd:string .
+  ?targetUnit qpm:unit_name "Gabalfa"^^xsd:string .
+}
+"""
+
+# Execute the query
+results = g.query(query_cq2_4)
+
+# Print the results
+count = 0
+for row in results:
+    print(row)
+    count += 1
+
+print(f"Total results: {count}")
+
+
+# CQ2.5
+# Every 'relationship of interest' involving Gabalfa, checked in both directions (Gabalfa as source and as target).
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq2_5 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT DISTINCT ?nearUnitName ?relationType
+WHERE {
+  {
+    # Direction 1
+    ?unit qpm:unit_name "Gabalfa"^^xsd:string .
+    ?spRel a qpm:SpatialRelationship ;
+           qpm:sourceUnit ?unit ;
+           qpm:targetUnit ?nearUnit ;
+           qpm:relationshipType ?relationType .
+    ?nearUnit qpm:unit_name ?nearUnitName .
+  }
+  UNION
+  {
+    # Direction 2
+    ?unit qpm:unit_name "Gabalfa"^^xsd:string .
+    ?spRel a qpm:SpatialRelationship ;
+           qpm:sourceUnit ?nearUnit ;
+           qpm:targetUnit ?unit ;
+           qpm:relationshipType ?relationType .
+    ?nearUnit qpm:unit_name ?nearUnitName .
+  }
+}
+"""
+# Execute the query
+results = g.query(query_cq2_5)
+
+# Print the results
+count = 0
+for row in results:
+    print(f"Near Unit: {row.nearUnitName}, Relationship: {row.relationType}")
+    count += 1
+
+print(f"Total results: {count}")
+
+
+# CQ2.6
+# Quick script to double check the betweenness result reported in the
+# appendix (Gabalfa -> Castle -> Grangetown). The appendix query uses a
+# SPARQL property path over south_of; here I instead do a plain
+# breadth-first search over all four directional predicates in Python,
+# just to confirm both approaches agree. For this single-hop case they
+# do: both return Castle (unit_182) as the unit in between.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+from rdflib import Graph, Namespace
+from collections import deque
+
+QPM = Namespace("http://qpm.ontology/2025#")
+
+g = Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+# Define all possible directional predicates
+directional_predicates = [
+    QPM.south_of,
+    QPM.north_of,
+    QPM.east_of,
+    QPM.west_of
+]
+
+
+def find_units_in_between_auto(graph, start, end, max_length=10):
+    """
+    Independent validation of CQ2.6 (betweenness inference) via breadth-first
+    search across directional predicates, corroborating the SPARQL result
+    reported in the thesis Appendix (Listing lst:appendix_between_units).
+
+    Tries each directional predicate in turn and performs a bounded
+    breadth-first search (up to max_length hops) from `start` to `end`.
+    Returns the intermediate units on the first path found.
+    """
+    for predicate in directional_predicates:
+        queue = deque([(start, [start])])
+        visited = set()
+        while queue:
+            current, path = queue.popleft()
+            if current in visited:
+                continue
+            visited.add(current)
+            if current == end:
+                print(f"Detected direction: {predicate}")
+                return path[1:-1]
+            if len(path) > max_length:
+                continue
+            for neighbor in graph.objects(current, predicate):
+                if neighbor not in path:
+                    queue.append((neighbor, path + [neighbor]))
+    print("No directional path found between the given units.")
+    return []
+
+
+# ===== Example Usage (as reported in the thesis Evaluation Chapter) =====
+start_unit = QPM.unit_187  # Gabalfa
+end_unit = QPM.unit_188  # Grangetown
+between_units = find_units_in_between_auto(g, start_unit, end_unit)
+print(f"Units between {start_unit} and {end_unit}:")
+if between_units:
+    for u in between_units:
+        print(" ->", u)
+else:
+    print("No direct path found.")
+
+
+# CQ2.7
+# Which unit overlaps with Cathays - this is the query behind Appendix Listing lst:appendix_overlapping_units. Expected answer is Cardiff CF103.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+from rdflib import Graph, Namespace
+
+QPM = Namespace("http://qpm.ontology/2025#")
+g = rdflib.Graph()
+g.bind("qpm", QPM)
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+unit_name = "Cathays"
+
+query = f"""
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT DISTINCT ?overlapUnitName
+WHERE {{
+  # find the URI of the given unit
+  ?unit a qpm:Unit ;
+        qpm:unit_name "{unit_name}"^^xsd:string .
+
+  {{
+    # 1) reified pattern
+    ?rel a qpm:SpatialRelationship ;
+         qpm:sourceUnit   ?unit ;
+         qpm:targetUnit   ?overlapUnit ;
+         qpm:relationshipType "Overlap"^^xsd:string .
+  }}
+  UNION
+  {{
+    # 2) direct pattern
+    ?unit qpm:hasSpatialRelationship ?overlapUnit ;
+          qpm:relationshipType      "Overlap"^^xsd:string .
+  }}
+
+  ?overlapUnit qpm:unit_name ?overlapUnitName .
+}}
+"""
+
+results = g.query(query)
+
+print(f"Units that overlap with '{unit_name}':")
+found = False
+for row in results:
+    print(f"- {row.overlapUnitName}")
+    found = True
+
+if not found:
+    print(f"No overlapping units found for '{unit_name}'.")
+
+
+# CQ2.8
+# Every relationship in or out of Cardiff CF52 (unit_2565), with OUTGOING/INCOMING labelled - this is Listing lst:sparql_all_relationships from the appendix.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+from rdflib import Graph, Namespace
+
+QPM = Namespace("http://qpm.ontology/2025#")
+g = rdflib.Graph()
+g.bind("qpm", QPM)
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+unit_uri = QPM["unit_2565"]  # Cardiff CF52
+
+query = f"""
+PREFIX qpm: <http://qpm.ontology/2025#>
+
+SELECT ?relationType ?relatedUnit ?relatedUnitName ?direction
+WHERE {{
+  {{
+    ?spRel a qpm:SpatialRelationship ;
+           qpm:relationshipType ?relationType ;
+           qpm:sourceUnit <{unit_uri}> ;
+           qpm:targetUnit ?relatedUnit .
+    ?relatedUnit qpm:unit_name ?relatedUnitName .
+    BIND("OUTGOING" AS ?direction)
+  }}
+  UNION
+  {{
+    ?spRel a qpm:SpatialRelationship ;
+           qpm:relationshipType ?relationType ;
+           qpm:sourceUnit ?relatedUnit ;
+           qpm:targetUnit <{unit_uri}> .
+    ?relatedUnit qpm:unit_name ?relatedUnitName .
+    BIND("INCOMING" AS ?direction)
+  }}
+}}
+"""
+
+results = g.query(query)
+
+found = False
+for row in results:
+    print(f"{row.direction}: {row.relationType} -> {row.relatedUnitName} ({row.relatedUnit})")
+    found = True
+
+if not found:
+    print("No spatial relationships found for the given unit.")
+
+
+# CQ3.1
+# All the places sitting inside Castle ward.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?place ?placeName
+WHERE {
+  ?unit a qpm:Unit ;
+        qpm:unit_name "Castle"^^xsd:string .
+
+  ?place a qpm:Place ;
+         qpm:place_name ?placeName ;
+         qpm:contained_by_unit ?unit .
+}
+"""
+count = 0
+
+results = g.query(query)
+
+count = 0
+for row in results:
+    print(row.placeName)
+    count += 1
+
+print(f"Total results: {count}")
+
+
+# CQ3.2
+# Every unit contained within the Cardiff unitary authority (Caerdydd - Cardiff).
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq3_2 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+
+SELECT ?containedUnit ?containedID ?containedUnitName
+WHERE {
+  ?parentUnit a qpm:Unit ;
+        qpm:unit_name ?parentName .
+  FILTER(LCASE(STR(?parentName)) = "caerdydd - cardiff")
+  ?containedUnit qpm:contained_by ?parentUnit ;
+                qpm:spatial_unit_id ?containedID ; 
+                 qpm:unit_name ?containedUnitName .
+}
+"""
+
+# Execute the query
+results = g.query(query_cq3_2)
+
+# Print the results
+count = 0
+for row in results:
+    print(f"Unit ID: {row.containedID}, Name: {row.containedUnitName}")
+    count += 1
+
+print(f"Total results: {count}")
+
+
+# CQ3.3
+# All places anywhere underneath the top-level Wales unit. This one needs the full Wales dataset rather than the smaller cross-hierarchy graph, since the small graph doesn't carry the containment chain all the way up to country level.
+#
+# Executed against: QPM_Wales_Places_DataSet.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_Wales_Places_DataSet.ttl", format="turtle")
+
+query = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?place ?placeName
+WHERE {
+  ?topUnit a qpm:Unit ;
+           qpm:unit_name "Wales"^^xsd:string .
+
+  ?place a qpm:Place ;
+         qpm:place_name ?placeName ;
+         qpm:contained_by_unit ?unit .
+
+  ?unit (qpm:contained_by)* ?topUnit .
+}
+"""
+
+
+
+results = g.query(query)
+
+count = 0
+for row in results:
+    print(row)
+    count += 1
+
+print(f"Total results: {count}")
+
+
+# CQ3.4
+# Walking Gabalfa's containment chain all the way up to the top. Also needs the full Wales dataset for the same reason as CQ3.3.
+#
+# Executed against: QPM_Wales_Places_DataSet.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_Wales_Places_DataSet.ttl", format="turtle")
+
+query = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT DISTINCT ?ancestor ?ancestorName
+WHERE {
+  ?startUnit a qpm:Unit ;
+             qpm:unit_name "Gabalfa"^^xsd:string .
+
+  ?startUnit (qpm:contained_by)+ ?ancestor .
+
+  ?ancestor qpm:unit_name ?ancestorName .
+}
+"""
+
+
+# Wrap in list() to force the engine to find the data right now
+results = g.query(query)
+
+for row in results:
+    print(f"Ancestor: {row.ancestorName}")
+
+
+# CQ3.5
+# Other units that share the same parent unit as Gabalfa, i.e. its siblings in the hierarchy.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq3_5 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT DISTINCT ?siblingUnit ?siblingName
+WHERE {
+  ?targetUnit a qpm:Unit ;
+              qpm:unit_name "Gabalfa"^^xsd:string ;
+              qpm:contained_by ?parentUnit .
+
+  ?siblingUnit a qpm:Unit ;
+               qpm:contained_by ?parentUnit ;
+               qpm:unit_name ?siblingName .
+  FILTER(?siblingUnit != ?targetUnit)
+}
+"""
+
+# Execute the query
+results = g.query(query_cq3_5)
+
+# Print the results
+count = 0
+for row in results:
+    print(f"Sibling: {row.siblingName}")
+    count += 1
+
+print(f"Total results: {count}")
+
+
+# CQ3.6
+# A simple table of places, the unit that contains each one, and that unit's level in the hierarchy.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq3_6 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+
+SELECT ?place ?place_name ?unit ?unit_name ?unit_level
+WHERE {
+    ?place a qpm:Place ;
+           qpm:place_name ?place_name ;
+           qpm:contained_by_unit ?unit .
+    ?unit a qpm:Unit ;
+          qpm:unit_name ?unit_name ;
+          qpm:unit_level ?unit_level .
+}
+"""
+
+# Execute the query
+results = g.query(query_cq3_6)
+
+# Print the results
+count = 0
+print(f"{'Place Name':<35} | {'Unit Name':<25} | {'Level'}")
+print("-" * 75)
+
+for row in results:
+    print(f"{str(row.place_name):<35} | {str(row.unit_name):<25} | {str(row.unit_level)}")
+    count += 1
+
+print("-" * 75)
+print(f"Total results: {count}")
+
+
+# CQ3.7
+# Which hierarchy Cardiff CF52 belongs to.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq3_7 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+
+SELECT ?unit ?hierarchy
+WHERE {
+  ?unit a qpm:Unit ;
+        qpm:unit_name ?name ;
+        qpm:belongs_to_hierarchy ?hierarchy .
+  FILTER(str(?name) = "Cardiff CF52")
+}
+"""
+
+# Execute the query
+results = g.query(query_cq3_7)
+
+# Print the results
+count = 0
+for row in results:
+    print(f"Unit URI: {row.unit}")
+    print(f"Hierarchy URI: {row.hierarchy}")
+    count += 1
+
+print(f"Total results: {count}")
+
+
+# CQ4.1
+# H3 cell coverage recorded for Castle ward.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq4_1 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?unit ?h3_cells
+WHERE {
+  ?unit a qpm:Unit ;
+        qpm:unit_name ?name ;
+        qpm:unit_h3 ?h3_cells .
+  FILTER(str(?name) = "Castle")
+}
+"""
+
+# Execute the query
+results = g.query(query_cq4_1)
+
+# Print the results
+count = 0
+for row in results:
+    print(f"H3 Cell: {row.h3_cells}")
+    count += 1
+
+print(f"Total results: {count}")
+
+
+# CQ4.2
+# H3 and S2 cell identifiers recorded for Saint David's Centre.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq4_2 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?place ?h3Cell ?s2Cell
+WHERE {
+  ?place a qpm:Place ;
+         qpm:place_name "Saint David's Centre"^^xsd:string ;
+         qpm:place_h3 ?h3Cell ;
+         qpm:place_s2 ?s2Cell .
+}
+"""
+
+# Execute the query
+results = g.query(query_cq4_2)
+
+# Print the results
+count = 0
+for row in results:
+    print(f"H3 Cell: {row.h3Cell}")
+    print(f"S2 Cell: {row.s2Cell}")
+    count += 1
+
+print(f"Total results: {count}")
+
+
+# CQ4.3
+# Placekey identifier recorded for Saint David's Centre.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq4_3 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?place ?placeKey
+WHERE {
+  ?place a qpm:Place ;
+         qpm:place_name "Saint David's Centre"^^xsd:string ;
+         qpm:place_key ?placeKey .
+}
+"""
+
+# Execute the query
+results = g.query(query_cq4_3)
+
+# Print the results
+count = 0
+for row in results:
+    print(f"Place URI: {row.place}")
+    print(f"Placekey: {row.placeKey}")
+    count += 1
+
+print(f"Total results: {count}")
+
+
+# CQ5.1
+# Listing all the places that were qualitatively created rather than sourced directly (geometry_source = Computed) - should be the 9 places discussed in the qualitative place creation chapter.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq5_1 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?place ?placeName
+WHERE {
+  ?place a qpm:Place ;
+         qpm:place_name ?placeName ;
+         qpm:geometry_source "Computed"^^xsd:string .
+}
+"""
+
+# Execute the query
+results = g.query(query_cq5_1)
+
+# Print the results
+count = 0
+for row in results:
+    print(f"Place Name: {row.placeName}")
+    count += 1
+
+print(f"Total computed places: {count}")
+
+
+# CQ5.2
+# Provenance details for each computed place - what relationship type and which anchor place(s) it was derived from.
+#
+# Executed against: QPM_CrossHierarchy_Evaluation_Graph.ttl
+
+import rdflib
+
+g = rdflib.Graph()
+g.parse("QPM_CrossHierarchy_Evaluation_Graph.ttl", format="turtle")
+
+query_cq5_2 = """
+PREFIX qpm: <http://qpm.ontology/2025#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?place ?place_name ?relationship ?involved_place ?involved_place_name
+WHERE {
+    ?place a qpm:Place ;
+           qpm:geometry_source "Computed"^^xsd:string ;
+           qpm:place_name ?place_name ;
+           qpm:hasProvenance ?provenance .
+    ?provenance qpm:involved_place ?involved_place .
+    ?involved_place qpm:place_name ?involved_place_name .
+    OPTIONAL { ?provenance qpm:described_relationship ?relationship . }
+}
+"""
+
+# Execute the query
+results = g.query(query_cq5_2)
+
+# Print the results
+print(f"{'Computed Place':<20} | {'Relationship':<15} | {'Involved Place'}")
+print("-" * 70)
+
+count = 0
+for row in results:
+    place_name = str(row.place_name) if row.place_name else "N/A"
+    relationship = str(row.relationship) if row.relationship else "N/A"
+    involved_name = str(row.involved_place_name) if row.involved_place_name else "N/A"
+
+    print(f"{place_name:<20} | {relationship:<15} | {involved_name}")
+    count += 1
+
+print("-" * 70)
+print(f"Total provenance records: {count}")
