@@ -6,21 +6,22 @@ The aim of the work is to represent places and units qualitatively and natively 
 
 ## What the dataset contains
 
-**QPM_Wales_Places_DataSet.ttl.gz** holds the Welsh places together with the full administrative spatial units that contain them: all 52,821 places of Wales together with the complete administrative hierarchy (1,720 units), with point geometry stored as GeoSPARQL WKT. This is the place-level dataset behind the place analysis in the thesis, including the qualitative place descriptions (directional and containment relations), and it is the graph the queries asked at the scale of the whole of Wales are run against.
+**QPM\_Wales\_Places\_DataSet.ttl.gz** holds the Welsh places together with the full administrative spatial units that contain them: all 52,821 places of Wales together with the complete administrative hierarchy (1,720 units), with point geometry stored as GeoSPARQL WKT. This is the place-level dataset behind the place analysis in the thesis, including the qualitative place descriptions (directional and containment relations), and it is the graph the queries asked at the scale of the whole of Wales are run against.
 
-**QPM_Administrative_Hierarchy.ttl.gz**, **QPM_Electoral_Hierarchy.ttl.gz** and **QPM_Postal_Hierarchy.ttl.gz** hold the three traditional hierarchies of Wales, each as its own graph, with their qualitative place descriptions (directional and containment relations) and DGGS representations (1,720 administrative units, 775 electoral units and 747 postal units respectively).
+**QPM\_Administrative\_Hierarchy.ttl.gz**, **QPM\_Electoral\_Hierarchy.ttl.gz** and **QPM\_Postal\_Hierarchy.ttl.gz** hold the three traditional hierarchies of Wales, each as its own graph, with their qualitative place descriptions (directional and containment relations) and DGGS representations (1,720 administrative units, 775 electoral units and 747 postal units respectively).
 
 Each hierarchy is provided as a separate graph because each one is evaluated on its own in the thesis. The uniqueness of the qualitative place descriptions is tested within each hierarchy separately, the coverage of each hierarchy is measured separately, and these are the graphs on which the inverse and transitive closure is applied, so that the inferential gain of each hierarchy can be reported by itself before the hierarchies are considered together.
 
-**QPM_CrossHierarchy_Evaluation_Graph.ttl.gz** holds the qualitative spatial relationships that hold between units of different hierarchies, together with the H3 and S2 discrete global grid representations and the qualitatively created places. These are the parts of the model presented in the later chapters (Chapters 4 to 6), and this is the graph most of the competency-question evaluation is run against.
+**QPM\_CrossHierarchy\_Evaluation\_Graph.ttl.gz** holds the qualitative spatial relationships that hold between units of different hierarchies, together with the H3 and S2 discrete global grid representations and the qualitatively created places. These are the parts of the model presented in the later chapters (Chapters 4 to 6), and this is the graph most of the competency-question evaluation is run against.
 
-**QPM_Competency_Question_Queries_Thesis.txt** holds the SPARQL queries behind the evaluation. Each query is documented, includes the code to load the relevant graph and run it, and states the graph it is run against, so any query can be copied and run on its own.
+**QPM\_Competency\_Question\_Queries\_Thesis.txt** holds the SPARQL queries behind the evaluation. Each query is documented, includes the code to load the relevant graph and run it, and states the graph it is run against, so any query can be copied and run on its own.
 
 ## Format and vocabulary
 
 The graphs are in RDF/Turtle and the geometry uses GeoSPARQL (`geo:asWKT`). The model vocabulary uses the namespace:
 
-    @prefix qpm: <http://qpm.ontology/2025#> .
+&#x20;   @prefix qpm: <http://qpm.ontology/2025#> .
+
 
 The graphs are provided gzip-compressed (`.ttl.gz`) and should be decompressed before use, or loaded with a tool that reads gzipped Turtle directly.
 
@@ -36,4 +37,5 @@ The place and boundary data are derived from Ordnance Survey OpenData, © Crown 
 
 Please cite the thesis and this dataset:
 
-Abdurauf Satoti, 2026, *Qualitative Representation and Management of Place in GIS: A Multi-Hierarchical Framework*, PhD thesis, Cardiff University. Dataset DOI: [to be added on deposit].
+Abdurauf Satoti, 2026, \*Qualitative Representation and Management of Place in GIS: A Multi-Hierarchical Framework\*, PhD thesis, Cardiff University. Dataset DOI: https://doi.org/10.5281/zenodo.21542540.
+
